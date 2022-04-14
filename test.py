@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
-waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
+waterQualityDataset = pd.read_csv('datasets/classification/crystal.csv')
 
 from sklearn.tree import DecisionTreeClassifier
 from SoftSplitDecisionTrees import SoftSplitDecisionTreeClassifier
@@ -58,8 +58,12 @@ def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
 # print(f'Regular Model accuracy {scoresRegular.mean()} SoftSplit Model accuracy {scoresSoftSplit.mean()}')
 
 
+# waterQualityDataset = waterQualityDataset[waterQualityDataset['Lowest distortion'] == 'cubic' or waterQualityDataset['Lowest distortion']== 'orthorhombic']
+# waterQualityDataset=waterQualityDataset.loc[(waterQualityDataset['Lowest distortion'] == 'cubic') | (waterQualityDataset['Lowest distortion'] == 'orthorhombic')]
+waterQualityDataset['Lowest distortion'].mask(waterQualityDataset['Lowest distortion'] != 'cubic', 'no cubic', inplace=True)
 waterQualityDataset=preprocess(waterQualityDataset)
-X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Potability'],waterQualityDataset['Potability']
+
+X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Lowest distortion'],waterQualityDataset['Lowest distortion']
 
 treeClassifier = DecisionTreeClassifier()
 treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
