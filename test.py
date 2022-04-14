@@ -4,10 +4,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
+waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
 
 from sklearn.tree import DecisionTreeClassifier
 from SoftSplitDecisionTrees import SoftSplitDecisionTreeClassifier
-from sklearn.model_selection import cross_val_score, RepeatedKFold, cross_validate
+from sklearn.model_selection import RepeatedKFold, cross_validate
 
 from sklearn import preprocessing
 
@@ -20,7 +21,7 @@ def preprocess(dataset):
             dataset[column_name] = le.fit_transform(dataset[column_name])
         else:
             pass
-    dataset.fillna(strokeDataset.mean(), inplace=True)
+    dataset.fillna(dataset.mean(), inplace=True)
     return dataset
 
 
@@ -31,7 +32,6 @@ def evaluateModel(model, X, y, k=5, repeats=2):
 
 def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
     colors = sns.color_palette("Paired")
-    # 'test_roc_auc'
     plt.plot(scoresRegular[metric], label=f'regular classifier {title}', color=colors[0])
     plt.plot([scoresRegular[metric].mean() for x in scoresRegular[metric]], label=f'regular classifier {title} mean',
              color=colors[1], linewidth=0.5, marker="_")
@@ -45,14 +45,26 @@ def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
     plt.show()
 
 
-strokeDataset = preprocess(strokeDataset)
-X, y = strokeDataset.loc[:, strokeDataset.columns != 'stroke'], strokeDataset['stroke']
+# strokeDataset = preprocess(strokeDataset)
+# X, y = strokeDataset.loc[:, strokeDataset.columns != 'stroke'], strokeDataset['stroke']
+#
+# treeClassifier = DecisionTreeClassifier()
+# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100, alphaProbability=0.1)
+#
+# scoresRegular = evaluateModel(treeClassifier, X, y)
+# scoresSoftSplit = evaluateModel(treeSoftSplitClassifier, X, y)
+# plotModelScore(scoresRegular, scoresSoftSplit,'accuracy','test_accuracy')
+# plotModelScore(scoresRegular, scoresSoftSplit,'auc','test_roc_auc')
+# print(f'Regular Model accuracy {scoresRegular.mean()} SoftSplit Model accuracy {scoresSoftSplit.mean()}')
+
+
+waterQualityDataset=preprocess(waterQualityDataset)
+X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Potability'],waterQualityDataset['Potability']
 
 treeClassifier = DecisionTreeClassifier()
-treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100, alphaProbability=0.1)
+treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
 
-scoresRegular = evaluateModel(treeClassifier, X, y)
-scoresSoftSplit = evaluateModel(treeSoftSplitClassifier, X, y)
-plotModelScore(scoresRegular, scoresSoftSplit,'accuracy','test_accuracy')
-plotModelScore(scoresRegular, scoresSoftSplit,'auc','test_roc_auc')
-# print(f'Regular Model accuracy {scoresRegular.mean()} SoftSplit Model accuracy {scoresSoftSplit.mean()}')
+scoresRegular =evaluateModel(treeClassifier,X,y)
+scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+plotModelScore(scoresRegular, scoresSoftSplit,'WaterQuality','accuracy','test_accuracy')
+plotModelScore(scoresRegular, scoresSoftSplit,'WaterQuality','auc','test_roc_auc')
