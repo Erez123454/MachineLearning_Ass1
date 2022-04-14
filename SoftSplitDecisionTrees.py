@@ -6,7 +6,8 @@ from sklearn.utils.validation import check_is_fitted, _deprecate_positional_args
 
 
 class SoftSplitDecisionTreeClassifier(tree.DecisionTreeClassifier):
-    def __init__(self, *,
+    def __init__(self, *,n=100,
+                 alphaProbability=0.1,
                  criterion="gini",
                  splitter="best",
                  max_depth=None,
@@ -34,8 +35,57 @@ class SoftSplitDecisionTreeClassifier(tree.DecisionTreeClassifier):
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
             ccp_alpha=ccp_alpha)
+        self.n=n
+        self.alphaProbability=alphaProbability
 
-    def predictWrapper(self,X,n=100,alphaProbability=0):
+
+    def predict(self, X, check_input=True):
+        # check_is_fitted(self)
+        # X = self._validate_X_predict(X, check_input)
+        # return self.predictWrapper(X)
+        """Predict class or regression value for X.
+
+        For a classification model, the predicted class for each sample in X is
+        returned. For a regression model, the predicted value based on X is
+        returned.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The input samples. Internally, it will be converted to
+            ``dtype=np.float32`` and if a sparse matrix is provided
+            to a sparse ``csr_matrix``.
+
+        check_input : bool, default=True
+            Allow to bypass several input checking.
+            Don't use this parameter unless you know what you do.
+
+        Returns
+        -------
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            The predicted classes, or the predict values.
+        """
+        check_is_fitted(self)
+        X = self._validate_X_predict(X, check_input)
+        proba = self.predict_proba(X,check_input)
+        n_samples = X.shape[0]
+
+        # Classification
+        if self.n_outputs_ == 1:
+            return self.classes_.take(np.argmax(proba, axis=1), axis=0)
+
+        else:
+            class_type = self.classes_[0].dtype
+            predictions = np.zeros((n_samples, self.n_outputs_),
+                                   dtype=class_type)
+            for k in range(self.n_outputs_):
+                predictions[:, k] = self.classes_[k].take(
+                    np.argmax(proba[:, k], axis=1),
+                    axis=0)
+
+            return predictions
+
+    def predictWrapper(self,row,predictionFunction):
         '''
         Function to wrap the single prediction process, the function will
         run the prediction for n iteration
@@ -48,10 +98,11 @@ class SoftSplitDecisionTreeClassifier(tree.DecisionTreeClassifier):
         :return:
         :rtype:
         '''
-        predictions = np.array([self.predict_proba(X,alphaProbability=alphaProbability) for i in range(n)])
+        predictions = np.array([predictionFunction(row) for i in range(self.n)])
         avgPredictions = np.array([np.array([val for val in i]) for i in predictions.mean(0)])
         return avgPredictions
-    def predict_proba(self, X, alphaProbability=0, check_input=True):
+
+    def predict_proba(self, X, check_input=True):
         """Predict class probabilities of the input samples X.
 
         The predicted class probability is the fraction of samples of the same
@@ -79,9 +130,8 @@ class SoftSplitDecisionTreeClassifier(tree.DecisionTreeClassifier):
         """
         check_is_fitted(self)
         X = self._validate_X_predict(X, check_input)
-        probaOld = self.tree_.predict(X)
-        probabilisticPredictionFunction = self._generateProbabilisticPredictionFunction(alphaProbability)
-        probaList = [probabilisticPredictionFunction(row) for row in X]
+        probabilisticPredictionFunction = self._generateProbabilisticPredictionFunction(self.alphaProbability)
+        probaList = [self.predictWrapper(row, probabilisticPredictionFunction) for row in X]
         proba = np.concatenate(probaList, axis=0)
 
         if self.n_outputs_ == 1:
@@ -104,7 +154,7 @@ class SoftSplitDecisionTreeClassifier(tree.DecisionTreeClassifier):
 
             return all_proba
 
-    def _generateProbabilisticPredictionFunction(self, alphaProbability=0):
+    def _generateProbabilisticPredictionFunction(self, alphaProbability):
         '''
         Private util function to generate probabilistic prediction function.
         :param alphaProbability:
@@ -356,8 +406,8 @@ class SoftSplitDecisionTreeRegressor(tree.DecisionTreeRegressor):
            0.16...,  0.11..., -0.73..., -0.30..., -0.00...])
     """
 
-    @_deprecate_positional_args
-    def __init__(self, *,
+    def __init__(self, *,n=100,
+                 alphaProbability=0.1,
                  criterion="mse",
                  splitter="best",
                  max_depth=None,
@@ -383,25 +433,10 @@ class SoftSplitDecisionTreeRegressor(tree.DecisionTreeRegressor):
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
             ccp_alpha=ccp_alpha)
+        self.n=n
+        self.alphaProbability=alphaProbability
 
-    def predictWrapper(self,X,n=100,alphaProbability=0):
-        '''
-        Function to wrap the single prediction process, the function will
-        run the prediction for n iteration
-        :param X:
-        :type X:
-        :param n:
-        :type n:
-        :param alphaProbability:
-        :type alphaProbability:
-        :return:
-        :rtype:
-        '''
-        predictions = np.array([self.predict(X,alphaProbability=alphaProbability) for i in range(n)])
-        avgPredictions = np.array([np.array([val for val in i]) for i in predictions.mean(0)])
-        return avgPredictions
-
-    def predict(self, X, alphaProbability=0, check_input=True):
+    def predict(self, X, check_input=True):
         """Predict class or regression value for X.
 
             For a classification model, the predicted class for each sample in X is
@@ -428,9 +463,8 @@ class SoftSplitDecisionTreeRegressor(tree.DecisionTreeRegressor):
             """
         check_is_fitted(self)
         X = self._validate_X_predict(X, check_input)
-        probaOld = self.tree_.predict(X)
-        probabilisticPredictionFunction = self._generateProbabilisticPredictionFunction(alphaProbability)
-        probaList = [probabilisticPredictionFunction(row) for row in X]
+        probabilisticPredictionFunction = self._generateProbabilisticPredictionFunction(self.alphaProbability)
+        probaList = [self.predictWrapper(row,probabilisticPredictionFunction) for row in X]
         proba = np.concatenate(probaList, axis=0)
 
         # Regression
@@ -440,7 +474,7 @@ class SoftSplitDecisionTreeRegressor(tree.DecisionTreeRegressor):
         else:
             return proba[:, :, 0]
 
-    def _generateProbabilisticPredictionFunction(self, alphaProbability=0):
+    def _generateProbabilisticPredictionFunction(self, alphaProbability):
         '''
         Private util function to generate probabilistic prediction function.
         :param alphaProbability:
@@ -489,4 +523,19 @@ class SoftSplitDecisionTreeRegressor(tree.DecisionTreeRegressor):
 
         return _predict_single
 
-
+    def predictWrapper(self, row, predictionFunction):
+        '''
+        Function to wrap the single prediction process, the function will
+        run the prediction for n iteration
+        :param X:
+        :type X:
+        :param n:
+        :type n:
+        :param alphaProbability:
+        :type alphaProbability:
+        :return:
+        :rtype:
+        '''
+        predictions = np.array([predictionFunction(row) for i in range(self.n)])
+        avgPredictions = np.array([np.array([val for val in i]) for i in predictions.mean(0)])
+        return avgPredictions
