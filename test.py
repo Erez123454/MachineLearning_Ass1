@@ -60,15 +60,49 @@ def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
 
 # waterQualityDataset = waterQualityDataset[waterQualityDataset['Lowest distortion'] == 'cubic' or waterQualityDataset['Lowest distortion']== 'orthorhombic']
 # waterQualityDataset=waterQualityDataset.loc[(waterQualityDataset['Lowest distortion'] == 'cubic') | (waterQualityDataset['Lowest distortion'] == 'orthorhombic')]
-waterQualityDataset['Lowest distortion'].mask(waterQualityDataset['Lowest distortion'] != 'cubic', 'no cubic', inplace=True)
-waterQualityDataset=preprocess(waterQualityDataset)
+# waterQualityDataset['Lowest distortion'].mask(waterQualityDataset['Lowest distortion'] != 'cubic', 'no cubic', inplace=True)
+# waterQualityDataset=preprocess(waterQualityDataset)
+#
+# X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Lowest distortion'],waterQualityDataset['Lowest distortion']
+#
+# treeClassifier = DecisionTreeClassifier()
+# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+#
+# scoresRegular =evaluateModel(treeClassifier,X,y)
+# scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+# plotModelScore(scoresRegular, scoresSoftSplit,'WaterQuality','accuracy','test_accuracy')
+# plotModelScore(scoresRegular, scoresSoftSplit,'WaterQuality','auc','test_roc_auc')
 
-X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Lowest distortion'],waterQualityDataset['Lowest distortion']
+def plotPieChart(x, labels, title, colors=sns.color_palette("pastel"), autopct='%.0f%%', shadow=True, startangle=90,
+                 explode=(0.1, 0)):
+    plt.title(title.capitalize(), fontsize=16)
+    plt.pie(x=x, labels=labels, colors=colors, autopct=autopct, shadow=shadow, startangle=startangle)
+    plt.legend()
+    plt.show()
 
-treeClassifier = DecisionTreeClassifier()
-treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
 
-scoresRegular =evaluateModel(treeClassifier,X,y)
-scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
-plotModelScore(scoresRegular, scoresSoftSplit,'WaterQuality','accuracy','test_accuracy')
-plotModelScore(scoresRegular, scoresSoftSplit,'WaterQuality','auc','test_roc_auc')
+def plotChartForAllDataset(dataset, excludeList=[]):
+    for column_name in set(dataset.columns).difference(excludeList):
+        if dataset[column_name].dtype == object or (
+                dataset[column_name].dtype == 'int64' and len(dataset[column_name].unique()) < 5):
+            data = [len(dataset[dataset[column_name] == value]) for value in dataset[column_name].unique()]
+            plotPieChart(x=data, title=column_name, labels=dataset[column_name].unique())
+        else:
+            his = sns.histplot(data=dataset, x=column_name)
+            his.set_ylabel("# of Records")
+            plt.show()
+
+strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
+# filter out sample with gender = 'Other'
+strokeDataset=strokeDataset[(strokeDataset['bmi'] > strokeDataset['bmi'].quantile(0.01)) & (strokeDataset['bmi'] < strokeDataset['bmi'].quantile(0.99))]
+strokeDataset = strokeDataset[strokeDataset['gender']!='Other']
+strokeDataset=pd.get_dummies(strokeDataset,columns=['gender','work_type'],drop_first=False)
+strokeDataset['ever_married'].replace({'Yes':1,'No':0},inplace=True)
+strokeDataset['Residence_type'].replace({'Urban':1,'Rural':0},inplace=True)
+strokeDataset['smoking_status'].replace({'never smoked':0,'formerly smoked':1,'smokes':2,'Unknown':3},inplace=True)
+strokeDataset.fillna(strokeDataset.mean(), inplace=True)
+
+plotChartForAllDataset(strokeDataset)
+# q_hi  = df["col"].quantile(0.99)
+# df_filtered = df[(df["col"] < q_hi) & (df["col"] > q_low)]
+print('a')
