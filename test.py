@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.tree import DecisionTreeClassifier
+
+from SoftSplitDecisionTrees import SoftSplitDecisionTreeClassifier
 #
 # strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
 # waterQualityDataset = pd.read_csv('datasets/classification/crystal.csv')
@@ -108,19 +111,61 @@ import seaborn as sns
 # print('a')
 
 
-waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
-# We will convert this multi-class problem to binary problem. We will try to classify a samples to 'Low' or 'High'
-# By converting this to binary classification problem get better balanced dataset
-# and also we could measure our model performance using the AUC metric
-# which can be apply only on binary classification problems.
-waterQualityDataset=waterQualityDataset.loc[:, waterQualityDataset.columns!='Id']
-waterQualityDataset['quality'].mask(waterQualityDataset['quality'] <= 5, 'Low', inplace=True)
-waterQualityDataset['quality'].mask(waterQualityDataset['quality'] > 5, 'High', inplace=True)
-waterQualityDataset=waterQualityDataset[(waterQualityDataset['chlorides'] > waterQualityDataset['chlorides'].quantile(0.01)) & (waterQualityDataset['chlorides'] < waterQualityDataset['chlorides'].quantile(0.99))]
-waterQualityDataset=waterQualityDataset[(waterQualityDataset['free sulfur dioxide'] > waterQualityDataset['free sulfur dioxide'].quantile(0.01)) & (waterQualityDataset['free sulfur dioxide'] < waterQualityDataset['free sulfur dioxide'].quantile(0.99))]
-waterQualityDataset=waterQualityDataset[(waterQualityDataset['total sulfur dioxide'] > waterQualityDataset['total sulfur dioxide'].quantile(0.01)) & (waterQualityDataset['total sulfur dioxide'] < waterQualityDataset['total sulfur dioxide'].quantile(0.99))]
-waterQualityDataset=waterQualityDataset[(waterQualityDataset['sulphates'] > waterQualityDataset['sulphates'].quantile(0.01)) & (waterQualityDataset['sulphates'] < waterQualityDataset['sulphates'].quantile(0.99))]
-waterQualityDataset=waterQualityDataset[(waterQualityDataset['residual sugar'] > waterQualityDataset['residual sugar'].quantile(0.01)) & (waterQualityDataset['residual sugar'] < waterQualityDataset['residual sugar'].quantile(0.99))]
+from sklearn import preprocessing
+from sklearn.model_selection import RepeatedKFold, cross_validate
+from sklearn.tree import DecisionTreeClassifier
+from SoftSplitDecisionTrees import SoftSplitDecisionTreeClassifier
 
-X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='quality'],waterQualityDataset['quality']
-print('a')
+# Utils
+def preprocess(dataset):
+    le = preprocessing.LabelEncoder()
+    for column_name in dataset.columns:
+        if dataset[column_name].dtype == object:
+            dataset[column_name] = le.fit_transform(dataset[column_name])
+        else:
+            pass
+    dataset.fillna(dataset.mean(), inplace=True)
+    return dataset
+
+def evaluateModel(model, X, y, k=5, repeats=2):
+    rkfcv = RepeatedKFold(n_splits=k, n_repeats=repeats, random_state=1)
+    return cross_validate(estimator=model, scoring=['accuracy', 'roc_auc'], X=X, y=y, cv=rkfcv, n_jobs=-1,error_score="raise")
+
+def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
+    colors = sns.color_palette("Paired")
+    plt.plot(scoresRegular[metric], label=f'regular classifier {title}', color=colors[0])
+    plt.plot([scoresRegular[metric].mean() for x in scoresRegular[metric]], label=f'regular classifier {title} mean',
+             color=colors[1], linewidth=0.5, marker="_")
+    plt.plot(scoresSoftSplit[metric], label=f'soft split classifier {title}', color=colors[2])
+    plt.plot([scoresSoftSplit[metric].mean() for x in scoresSoftSplit[metric]], label=f'soft split classifier {title} mean',
+             color=colors[3], linewidth=0.5, marker="_")
+    plt.legend()
+    plt.title(f'{title.capitalize()} of models on {dataset_name.capitalize()}')
+    plt.xlabel('Iteration')
+    plt.ylabel(f'{title.capitalize()}')
+    plt.show()
+
+
+wineQualityDataset = pd.read_csv('datasets/classification/wineQuality.csv')
+wineQualityDataset = wineQualityDataset.loc[:, wineQualityDataset.columns!='Id']
+# wineQualityDataset = preprocess(wineQualityDataset)
+wineQualityDataset=wineQualityDataset[wineQualityDataset['chlorides'] < wineQualityDataset['chlorides'].quantile(0.95)]
+wineQualityDataset=wineQualityDataset[wineQualityDataset['free sulfur dioxide'] < wineQualityDataset['free sulfur dioxide'].quantile(0.95)]
+wineQualityDataset=wineQualityDataset[wineQualityDataset['total sulfur dioxide'] < wineQualityDataset['total sulfur dioxide'].quantile(0.95)]
+wineQualityDataset=wineQualityDataset[wineQualityDataset['residual sugar'] < wineQualityDataset['residual sugar'].quantile(0.95)]
+wineQualityDataset=wineQualityDataset[wineQualityDataset['sulphates'] < wineQualityDataset['sulphates'].quantile(0.95)]
+wineQualityDataset['quality'].mask(wineQualityDataset['quality'] <= 5, 0, inplace=True)
+wineQualityDataset['quality'].mask(wineQualityDataset['quality'] > 5, 1, inplace=True)
+wineQualityDataset['quality'].mask(wineQualityDataset['quality'] == 0, 'Low', inplace=True)
+wineQualityDataset['quality'].mask(wineQualityDataset['quality'] == 1, 'High', inplace=True)
+X,y = wineQualityDataset.loc[:, wineQualityDataset.columns!='quality'],wineQualityDataset['quality']
+
+treeClassifier = DecisionTreeClassifier()
+treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+
+scoresRegular =evaluateModel(treeClassifier,X,y,repeats=3)
+scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y,repeats=3)
+
+
+plotModelScore(scoresRegular, scoresSoftSplit,'Wine Quality dataset','accuracy','test_accuracy')
+plotModelScore(scoresRegular, scoresSoftSplit,'Wine Quality dataset','auc','test_roc_auc')
