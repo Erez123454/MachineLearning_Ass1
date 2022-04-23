@@ -41,9 +41,9 @@ strokeDataset['Residence_type'].replace({'Urban': 1, 'Rural': 0}, inplace=True)
 strokeDataset['smoking_status'].replace({'never smoked': 0, 'formerly smoked': 1, 'smokes': 2, 'Unknown': 3},
                                         inplace=True)
 strokeDataset.fillna(strokeDataset.mean(), inplace=True)
-X, y = strokeDataset.loc[:, strokeDataset.columns != 'stroke'], strokeDataset['stroke']
+
 # # endregion
-Datasets.append(('Stroke dataset',X,y))
+Datasets.append(('Stroke dataset',strokeDataset.loc[:, strokeDataset.columns != 'stroke'],strokeDataset['stroke']))
 
 # region Water Quality dataset
 waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
