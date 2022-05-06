@@ -7,7 +7,7 @@ from sklearn.utils.validation import check_is_fitted, _deprecate_positional_args
 
 
 class SoftSplitOptimizationDecisionTreeClassifier(tree.DecisionTreeClassifier):
-    def __init__(self, *, n=100,alphaProbability=0.1, nearSensitivity=10000,
+    def __init__(self, *, n=100, alphaProbability=0.1, nearSensitivity=10000,
                  criterion="gini",
                  splitter="best",
                  max_depth=None,
@@ -36,8 +36,8 @@ class SoftSplitOptimizationDecisionTreeClassifier(tree.DecisionTreeClassifier):
             min_impurity_split=min_impurity_split,
             ccp_alpha=ccp_alpha)
         self.n = n
-        self.alphaProbability=alphaProbability
-        self.nearSensitivity=nearSensitivity
+        self.alphaProbability = alphaProbability
+        self.nearSensitivity = nearSensitivity
 
     def predict(self, X, check_input=True):
         # check_is_fitted(self)
@@ -177,7 +177,7 @@ class SoftSplitOptimizationDecisionTreeClassifier(tree.DecisionTreeClassifier):
 
             def __calcSigmod(x):
                 # return max(0.5,( 1 / (1 + np.exp(-(1/threshold)*(x**2)))) -0.1)
-                return max(0.5,( 1 / (1 + np.exp(-nearSensitivity*(x**2)))) - alphaProbability)
+                return max(0.5, ((1 / (1 + np.exp(-nearSensitivity * (x ** 2)))) - alphaProbability))
 
             if tree.feature[currNode] != _tree.TREE_UNDEFINED:
                 randomProb = random()
