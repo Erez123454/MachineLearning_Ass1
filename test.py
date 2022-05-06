@@ -7,10 +7,11 @@ from sklearn import preprocessing
 from sklearn.model_selection import RepeatedKFold, cross_validate
 from sklearn.tree import DecisionTreeClassifier
 
-#region Utils
 from SoftSplitDecisionTrees import SoftSplitDecisionTreeClassifier
 from SoftSplitOptimization import SoftSplitOptimizationDecisionTreeClassifier
 from sklearn.preprocessing import MinMaxScaler
+#region Utils
+
 
 
 def preprocess(dataset):
@@ -25,20 +26,25 @@ def preprocess(dataset):
 
 def evaluateModel(model, X, y, k=5, repeats=2):
     rkfcv = RepeatedKFold(n_splits=k, n_repeats=repeats, random_state=1)
-    return cross_validate(estimator=model, scoring=['accuracy', 'roc_auc'], X=X, y=y, cv=rkfcv, n_jobs=-1)
+    return cross_validate(estimator=model, scoring=['roc_auc'], X=X, y=y, cv=rkfcv, n_jobs=-1)
 
 def evaluateModel2(model, X, y, k=5, repeats=2):
     rkfcv = RepeatedKFold(n_splits=k, n_repeats=repeats, random_state=1)
     return cross_validate(estimator=model, scoring=['neg_mean_squared_error'], X=X, y=y, cv=rkfcv, n_jobs=-1)
 
-def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
+def plotModelScore(scoresRegular, scoresSoftSplit,optimization,dataset_name ,title, metric):
     colors = sns.color_palette("Paired")
-    plt.plot(scoresRegular[metric], label=f'regular classifier {title}', color=colors[0])
-    plt.plot([scoresRegular[metric].mean() for x in scoresRegular[metric]], label=f'regular classifier {title} mean',
+    plt.plot(scoresRegular[metric], label=f'original DT {title}', color=colors[0])
+    plt.plot([scoresRegular[metric].mean() for x in scoresRegular[metric]], label=f'original DT {title} mean',
              color=colors[1], linewidth=0.5, marker="_")
-    plt.plot(scoresSoftSplit[metric], label=f'soft split classifier {title}', color=colors[2])
-    plt.plot([scoresSoftSplit[metric].mean() for x in scoresSoftSplit[metric]], label=f'soft split classifier {title} mean',
+
+    plt.plot(scoresSoftSplit[metric], label=f'Soft DT {title}', color=colors[2])
+    plt.plot([scoresSoftSplit[metric].mean() for x in scoresSoftSplit[metric]], label=f'Soft DT {title} mean',
              color=colors[3], linewidth=0.5, marker="_")
+
+    plt.plot(optimization[metric], label=f'Improved soft DT {title}', color=colors[4])
+    plt.plot([optimization[metric].mean() for x in optimization[metric]], label=f'Improved soft DT {title} mean',
+             color=colors[5], linewidth=0.5, marker="_")
     plt.legend()
     plt.title(f'{title.capitalize()} of models on {dataset_name.capitalize()}')
     plt.xlabel('Iteration')
@@ -47,48 +53,58 @@ def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
 #endregion
 
 #region Healthcare
-# strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
-#
-# strokeDataset=strokeDataset[(strokeDataset['bmi'] > strokeDataset['bmi'].quantile(0.01)) & (strokeDataset['bmi'] < strokeDataset['bmi'].quantile(0.99))]
-# strokeDataset = strokeDataset[strokeDataset['gender']!='Other']
-# strokeDataset=pd.get_dummies(strokeDataset,columns=['gender','work_type'],drop_first=False)
-# strokeDataset['ever_married'].replace({'Yes':1,'No':0},inplace=True)
-# strokeDataset['Residence_type'].replace({'Urban':1,'Rural':0},inplace=True)
-# strokeDataset['smoking_status'].replace({'never smoked':0,'formerly smoked':1,'smokes':2,'Unknown':3},inplace=True)
-# strokeDataset.fillna(strokeDataset.mean(), inplace=True)
-#
-# X,y = strokeDataset.loc[:, strokeDataset.columns!='stroke'],strokeDataset['stroke']
-# scaler = MinMaxScaler()
-# # To scale data
-# X= scaler.fit_transform(X)
-#
-# softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier()
-# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
-#
-# scoresRegular =evaluateModel(softsplitOptimizedClassifier,X,y)
-# scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
-# plotModelScore(scoresRegular, scoresSoftSplit,'Stroke dataset','accuracy','test_accuracy')
-# plotModelScore(scoresRegular, scoresSoftSplit,'Stroke dataset','auc','test_roc_auc')
+strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
+
+strokeDataset=strokeDataset[(strokeDataset['bmi'] > strokeDataset['bmi'].quantile(0.01)) & (strokeDataset['bmi'] < strokeDataset['bmi'].quantile(0.99))]
+strokeDataset = strokeDataset[strokeDataset['gender']!='Other']
+strokeDataset=pd.get_dummies(strokeDataset,columns=['gender','work_type'],drop_first=False)
+strokeDataset['ever_married'].replace({'Yes':1,'No':0},inplace=True)
+strokeDataset['Residence_type'].replace({'Urban':1,'Rural':0},inplace=True)
+strokeDataset['smoking_status'].replace({'never smoked':0,'formerly smoked':1,'smokes':2,'Unknown':3},inplace=True)
+strokeDataset.fillna(strokeDataset.mean(), inplace=True)
+
+X,y = strokeDataset.loc[:, strokeDataset.columns!='stroke'],strokeDataset['stroke']
+scaler = MinMaxScaler()
+# To scale data
+X= scaler.fit_transform(X)
+
+treeClassifier = DecisionTreeClassifier()
+softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10**2)
+treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+
+optimized =evaluateModel(softsplitOptimizedClassifier,X,y)
+regular =evaluateModel(treeClassifier,X,y)
+softSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+print('stroke')
+print(f'optimized AUC:{optimized["test_roc_auc"].mean()}')
+print(f'softSplit AUC:{softSplit["test_roc_auc"].mean()}')
+print(f'regular AUC:{regular["test_roc_auc"].mean()}')
+plotModelScore(regular, softSplit,optimized,'Stroke Quality dataset','auc','test_roc_auc')
 #endregion
 
 #region Water Quality
 
-# waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
-# waterQualityDataset=preprocess(waterQualityDataset)
+waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
+waterQualityDataset=preprocess(waterQualityDataset)
+
+X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Potability'],waterQualityDataset['Potability']
+# Initialise the Scaler
+scaler = MinMaxScaler()
+# To scale data
+X= scaler.fit_transform(X)
 #
-# X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Potability'],waterQualityDataset['Potability']
-# # Initialise the Scaler
-# scaler = MinMaxScaler()
-# # To scale data
-# X= scaler.fit_transform(X)
-#
-# softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier()
-# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
-#
-# scoresRegular =evaluateModel(softsplitOptimizedClassifier,X,y)
-# scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
-# plotModelScore(scoresRegular, scoresSoftSplit,'Water Quality dataset','accuracy','test_accuracy')
-# plotModelScore(scoresRegular, scoresSoftSplit,'Water Quality dataset','auc','test_roc_auc')
+treeClassifier = DecisionTreeClassifier()
+softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10)
+treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+
+optimized =evaluateModel(softsplitOptimizedClassifier,X,y)
+regular =evaluateModel(treeClassifier,X,y)
+softSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+print('stroke')
+print(f'optimized AUC:{optimized["test_roc_auc"].mean()}')
+print(f'softSplit AUC:{softSplit["test_roc_auc"].mean()}')
+print(f'regular AUC:{regular["test_roc_auc"].mean()}')
+plotModelScore(regular, softSplit,optimized,'Water Quality dataset','auc','test_roc_auc')
 #endregion
 
 #region Crystals
@@ -144,21 +160,21 @@ def plotModelScore(scoresRegular, scoresSoftSplit,dataset_name ,title, metric):
 
 #region Adult
 
-adultIncomeDataset = pd.read_csv('datasets/classification/adult.csv')
-adultIncomeDataset.drop(columns='education',inplace=True)
-
-adultIncomeDataset=pd.get_dummies(adultIncomeDataset,columns=['race','marital-status','relationship','native-country','gender','workclass','occupation'],drop_first=False)
-
-X,y = adultIncomeDataset.loc[:, adultIncomeDataset.columns!='income'],adultIncomeDataset['income']
-# Initialise the Scaler
-scaler = MinMaxScaler()
-# To scale data
-X= scaler.fit_transform(X)
-softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(alphaProbability=0.1,nearSensitivity=1399)
-treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
-
-scoresRegular =evaluateModel(softsplitOptimizedClassifier,X,y)
-scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
-plotModelScore(scoresRegular, scoresSoftSplit,'Adult Income dataset','accuracy','test_accuracy')
-plotModelScore(scoresRegular, scoresSoftSplit,'Adult Income dataset','auc','test_roc_auc')
+# adultIncomeDataset = pd.read_csv('datasets/classification/adult.csv')
+# adultIncomeDataset.drop(columns='education',inplace=True)
+#
+# adultIncomeDataset=pd.get_dummies(adultIncomeDataset,columns=['race','marital-status','relationship','native-country','gender','workclass','occupation'],drop_first=False)
+#
+# X,y = adultIncomeDataset.loc[:, adultIncomeDataset.columns!='income'],adultIncomeDataset['income']
+# # Initialise the Scaler
+# scaler = MinMaxScaler()
+# # To scale data
+# X= scaler.fit_transform(X)
+# softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(alphaProbability=0.1,nearSensitivity=1399)
+# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+#
+# scoresRegular =evaluateModel(softsplitOptimizedClassifier,X,y)
+# scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+# plotModelScore(scoresRegular, scoresSoftSplit,'Adult Income dataset','accuracy','test_accuracy')
+# plotModelScore(scoresRegular, scoresSoftSplit,'Adult Income dataset','auc','test_roc_auc')
 #endregion
