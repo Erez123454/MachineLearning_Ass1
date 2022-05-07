@@ -1,14 +1,11 @@
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 
-# Some example data to display
-x = np.linspace(0, 2 * np.pi, 400)
-y = np.sin(x ** 2)
-fig, (ax1, ax2) = plt.subplots(1, 2, subplot_kw=dict(projection='polar'))
-ax1.plot(x, y,label='1')
-ax1.plot(x, y+4,label='1')
-ax2.plot(x, y ** 2,label='1')
+def calcSigmoid(x,alphaProbability=0.1,nearSensitivity=10**2):
+    return [max(0.5, x) for x in ((1 / (1 + np.exp(-nearSensitivity * (x ** 2)))) - alphaProbability)]
 
-plt.legend()
-
+x = np.linspace(-1, 1, 1000)
+plt.plot(x, calcSigmoid(x), color='red')
+plt.grid()
+plt.yticks(np.arange(0, 1.1, 0.1))
 plt.show()

@@ -53,50 +53,76 @@ def plotModelScore(scoresRegular, scoresSoftSplit,optimization,dataset_name ,tit
 #endregion
 
 #region Healthcare
-strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
-
-strokeDataset=strokeDataset[(strokeDataset['bmi'] > strokeDataset['bmi'].quantile(0.01)) & (strokeDataset['bmi'] < strokeDataset['bmi'].quantile(0.99))]
-strokeDataset = strokeDataset[strokeDataset['gender']!='Other']
-strokeDataset=pd.get_dummies(strokeDataset,columns=['gender','work_type'],drop_first=False)
-strokeDataset['ever_married'].replace({'Yes':1,'No':0},inplace=True)
-strokeDataset['Residence_type'].replace({'Urban':1,'Rural':0},inplace=True)
-strokeDataset['smoking_status'].replace({'never smoked':0,'formerly smoked':1,'smokes':2,'Unknown':3},inplace=True)
-strokeDataset.fillna(strokeDataset.mean(), inplace=True)
-
-X,y = strokeDataset.loc[:, strokeDataset.columns!='stroke'],strokeDataset['stroke']
-scaler = MinMaxScaler()
-# To scale data
-X= scaler.fit_transform(X)
-
-treeClassifier = DecisionTreeClassifier()
-softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10**2)
-treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
-
-optimized =evaluateModel(softsplitOptimizedClassifier,X,y)
-regular =evaluateModel(treeClassifier,X,y)
-softSplit =evaluateModel(treeSoftSplitClassifier,X,y)
-print('stroke')
-print(f'optimized AUC:{optimized["test_roc_auc"].mean()}')
-print(f'softSplit AUC:{softSplit["test_roc_auc"].mean()}')
-print(f'regular AUC:{regular["test_roc_auc"].mean()}')
-plotModelScore(regular, softSplit,optimized,'Stroke Quality dataset','auc','test_roc_auc')
+# strokeDataset = pd.read_csv('datasets/classification/healthcare-dataset-stroke-data.csv')
+#
+# strokeDataset=strokeDataset[(strokeDataset['bmi'] > strokeDataset['bmi'].quantile(0.01)) & (strokeDataset['bmi'] < strokeDataset['bmi'].quantile(0.99))]
+# strokeDataset = strokeDataset[strokeDataset['gender']!='Other']
+# strokeDataset=pd.get_dummies(strokeDataset,columns=['gender','work_type'],drop_first=False)
+# strokeDataset['ever_married'].replace({'Yes':1,'No':0},inplace=True)
+# strokeDataset['Residence_type'].replace({'Urban':1,'Rural':0},inplace=True)
+# strokeDataset['smoking_status'].replace({'never smoked':0,'formerly smoked':1,'smokes':2,'Unknown':3},inplace=True)
+# strokeDataset.fillna(strokeDataset.mean(), inplace=True)
+#
+# X,y = strokeDataset.loc[:, strokeDataset.columns!='stroke'],strokeDataset['stroke']
+# scaler = MinMaxScaler()
+# # To scale data
+# X= scaler.fit_transform(X)
+#
+# treeClassifier = DecisionTreeClassifier()
+# softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10**2)
+# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+#
+# optimized =evaluateModel(softsplitOptimizedClassifier,X,y)
+# regular =evaluateModel(treeClassifier,X,y)
+# softSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+# print('stroke')
+# print(f'optimized AUC:{optimized["test_roc_auc"].mean()}')
+# print(f'softSplit AUC:{softSplit["test_roc_auc"].mean()}')
+# print(f'regular AUC:{regular["test_roc_auc"].mean()}')
+# plotModelScore(regular, softSplit,optimized,'Stroke Quality dataset','auc','test_roc_auc')
 #endregion
 
 #region Water Quality
 
-waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
-waterQualityDataset=preprocess(waterQualityDataset)
+# waterQualityDataset = pd.read_csv('datasets/classification/waterQuality.csv')
+# waterQualityDataset=preprocess(waterQualityDataset)
+#
+# X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Potability'],waterQualityDataset['Potability']
+# # Initialise the Scaler
+# scaler = MinMaxScaler()
+# # To scale data
+# X= scaler.fit_transform(X)
+# #
+# treeClassifier = DecisionTreeClassifier()
+# softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10)
+# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
+#
+# optimized =evaluateModel(softsplitOptimizedClassifier,X,y)
+# regular =evaluateModel(treeClassifier,X,y)
+# softSplit =evaluateModel(treeSoftSplitClassifier,X,y)
+# print('stroke')
+# print(f'optimized AUC:{optimized["test_roc_auc"].mean()}')
+# print(f'softSplit AUC:{softSplit["test_roc_auc"].mean()}')
+# print(f'regular AUC:{regular["test_roc_auc"].mean()}')
+# plotModelScore(regular, softSplit,optimized,'Water Quality dataset','auc','test_roc_auc')
+#endregion
 
-X,y = waterQualityDataset.loc[:, waterQualityDataset.columns!='Potability'],waterQualityDataset['Potability']
+#region Crystals
+crystalDataset = pd.read_csv('datasets/classification/crystal.csv')
+# We will convert this multi-class problem to binary problem. We will try to classify a samples to 'Cubic' or 'No cubic'
+# By converting this to binary classification problem get better balanced dataset
+# and also we could measure our model performance using the AUC metric
+# which can be apply only on binary classification problems.
+crystalDataset=crystalDataset[(crystalDataset['τ'] > crystalDataset['τ'].quantile(0.15)) & (crystalDataset['τ'] < crystalDataset['τ'].quantile(0.95))]
+crystalDataset['Lowest distortion'].mask(crystalDataset['Lowest distortion'] != 'cubic', 'no cubic', inplace=True)
+X,y = crystalDataset.loc[:, crystalDataset.columns!='Lowest distortion'],crystalDataset['Lowest distortion']
 # Initialise the Scaler
 scaler = MinMaxScaler()
 # To scale data
 X= scaler.fit_transform(X)
-#
 treeClassifier = DecisionTreeClassifier()
-softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10)
+softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(n=100,alphaProbability=0.1,nearSensitivity=10**13)
 treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
-
 optimized =evaluateModel(softsplitOptimizedClassifier,X,y)
 regular =evaluateModel(treeClassifier,X,y)
 softSplit =evaluateModel(treeSoftSplitClassifier,X,y)
@@ -104,29 +130,7 @@ print('stroke')
 print(f'optimized AUC:{optimized["test_roc_auc"].mean()}')
 print(f'softSplit AUC:{softSplit["test_roc_auc"].mean()}')
 print(f'regular AUC:{regular["test_roc_auc"].mean()}')
-plotModelScore(regular, softSplit,optimized,'Water Quality dataset','auc','test_roc_auc')
-#endregion
-
-#region Crystals
-# crystalDataset = pd.read_csv('datasets/classification/crystal.csv')
-# # We will convert this multi-class problem to binary problem. We will try to classify a samples to 'Cubic' or 'No cubic'
-# # By converting this to binary classification problem get better balanced dataset
-# # and also we could measure our model performance using the AUC metric
-# # which can be apply only on binary classification problems.
-# crystalDataset=crystalDataset[(crystalDataset['τ'] > crystalDataset['τ'].quantile(0.15)) & (crystalDataset['τ'] < crystalDataset['τ'].quantile(0.95))]
-# crystalDataset['Lowest distortion'].mask(crystalDataset['Lowest distortion'] != 'cubic', 'no cubic', inplace=True)
-# X,y = crystalDataset.loc[:, crystalDataset.columns!='Lowest distortion'],crystalDataset['Lowest distortion']
-# # Initialise the Scaler
-# scaler = MinMaxScaler()
-# # To scale data
-# X= scaler.fit_transform(X)
-# softsplitOptimizedClassifier = SoftSplitOptimizationDecisionTreeClassifier(alphaProbability=0.1,nearSensitivity=10**7)
-# treeSoftSplitClassifier = SoftSplitDecisionTreeClassifier(n=100,alphaProbability=0.1)
-#
-# scoresRegular =evaluateModel(softsplitOptimizedClassifier,X,y)
-# scoresSoftSplit =evaluateModel(treeSoftSplitClassifier,X,y)
-# plotModelScore(scoresRegular, scoresSoftSplit,'Crystal dataset','accuracy','test_accuracy')
-# plotModelScore(scoresRegular, scoresSoftSplit,'Crystal dataset','auc','test_roc_auc')
+plotModelScore(regular, softSplit,optimized,'crystals dataset','auc','test_roc_auc')
 #endregion
 
 #region Wine Qaulity
